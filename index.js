@@ -3,41 +3,62 @@ const fetch = require("node-fetch");
 require("dotenv").config();
 
 const app = express();
-const PORT = process.env.PORT || 3000; // ✅ MUST use process.env.PORT for Render
+const PORT = process.env.PORT || 3000;
 
-// ✅ Define working endpoint
+// Allow CORS for frontend access
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  next();
+});
+
+// ✅ Improved /convert endpoint with dynamic ETH input
 app.get("/convert", async (req, res) => {
+  const ethAmount = parseFloat(req.query.eth);
+
+  if (isNaN(ethAmount) || ethAmount <= 0) {
+    return res.status(400).json({ error: "Invalid ETH amount" });
+  }
+
+  const apiKey = process.env.CMC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "Missing CMC_API_KEY" });
+  }
+
   try {
     const response = await fetch(
-      "https://pro-api.coinmarketcap.com/v2/tools/price-conversion?amount=1&symbol=ETH&convert=POL",
+      "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=ETH,POL&convert=POL",
       {
         method: "GET",
         headers: {
-          "X-CMC_PRO_API_KEY": process.env.CMC_API_KEY,
+          "X-CMC_PRO_API_KEY": apiKey,
           Accept: "application/json"
         }
       }
     );
 
-    if (!response.ok) {
-      throw new Error("CMC request failed");
+    const data = await response.json();
+    const rate = data?.data?.ETH?.quote?.POL?.price;
+
+    if (!rate) {
+      return res.status(500).json({ error: "Could not retrieve conversion rate" });
     }
 
-    const data = await response.json();
-    const rate = data.data[0].quote.POL.price;
-    res.json({ rate });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to fetch conversion rate" });
+    const polValue = ethAmount * rate;
+
+    res.json({ eth: ethAmount, rate, pol: polValue });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch conversion rate", details: err.message });
   }
 });
 
-// ✅ Basic root route (optional)
+// ✅ Optional root endpoint
 app.get("/", (req, res) => {
-  res.send("POL Rate Proxy is working.");
+  res.send("POL Rate Proxy is running.");
 });
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
 
