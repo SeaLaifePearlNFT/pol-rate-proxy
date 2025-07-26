@@ -1,0 +1,14 @@
+{
+  "name": "pol-rate-proxy",
+  "version": "1.0.0",
+  "description": "Backend proxy to fetch ETH to POL conversion rate from CoinMarketCap",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}
